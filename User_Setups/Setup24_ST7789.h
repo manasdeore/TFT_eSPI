@@ -2,7 +2,7 @@
 #define USER_SETUP_ID 24
 
 #define ST7789_DRIVER     // Configure all registers
-
+//#define TFT_SDA_READ 
 #define TFT_WIDTH  240
 #define TFT_HEIGHT 240
 
@@ -20,16 +20,18 @@
 
 // Generic ESP32 setup
 //#define TFT_MISO 19
-//#define TFT_MOSI 23
-//#define TFT_SCLK 18
-//#define TFT_CS    -1 // Not connected
-//#define TFT_DC    2
-//#define TFT_RST   4  // Connect reset to ensure display initialises
+#define TFT_MOSI 19
+#define TFT_SCLK 18
+#define TFT_DC   16
+#define TFT_RST  23  // Connect reset to ensure display initialises
+//#define TFT_BL    4 // Display backlight control pin
+
+//#define TFT_BACKLIGHT_ON HIGH  // HIGH or LOW are options
 
 // For NodeMCU - use pin numbers in the form PIN_Dx where Dx is the NodeMCU pin designation
-#define TFT_CS   -1      // Define as not used
-#define TFT_DC   PIN_D1  // Data Command control pin
-#define TFT_RST  PIN_D4  // TFT reset pin (could connect to NodeMCU RST, see next line)
+//#define TFT_CS   -1      // Define as not used
+//#define TFT_DC   PIN_D1  // Data Command control pin
+//#define TFT_RST  PIN_D4  // TFT reset pin (could connect to NodeMCU RST, see next line)
 //#define TFT_RST  -1    // TFT reset pin connect to NodeMCU RST, must also then add 10K pull down to TFT SCK
 
 

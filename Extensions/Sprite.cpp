@@ -423,7 +423,7 @@ bool TFT_eSprite::pushRotated(int16_t angle, uint32_t transp)
     if (_bpp == 4) tpcolor = _colorMap[transp & 0x0F];
     tpcolor = tpcolor>>8 | tpcolor<<8; // Working with swapped color bytes
   }
-  _tft->startWrite(); // Avoid transaction overhead for every tft pixel
+    _tft->startWrite(); // Avoid transaction overhead for every tft pixel
 
   // Scan destination bounding box and fetch transformed pixels from source Sprite
   for (int32_t y = min_y; y <= max_y; y++, yt++) {
@@ -441,7 +441,7 @@ bool TFT_eSprite::pushRotated(int16_t angle, uint32_t transp)
       int32_t yp = ys >> FP_SCALE;
       if (_bpp == 16) {rp = _img[xp + yp * _iwidth]; }
       else { rp = readPixel(xp, yp); rp = (uint16_t)(rp>>8 | rp<<8); }
-      if (transp != 0x00FFFFFF && tpcolor == rp) {
+      if (tpcolor == rp) {
         if (pixel_count) {
           // TFT window is already clipped, so this is faster than pushImage()
           _tft->setWindow(x - pixel_count, y, x - 1, y);
@@ -517,7 +517,7 @@ bool TFT_eSprite::pushRotated(TFT_eSprite *spr, int16_t angle, uint32_t transp)
       int32_t yp = ys >> FP_SCALE;
       if (_bpp == 16) rp = _img[xp + yp * _iwidth];
       else { rp = readPixel(xp, yp); rp = (uint16_t)(rp>>8 | rp<<8); }
-      if (transp != 0x00FFFFFF && tpcolor == rp) {
+      if (tpcolor == rp) {
         if (pixel_count) {
           spr->pushImage(x - pixel_count, y, pixel_count, 1, sline_buffer);
           pixel_count = 0;
@@ -717,7 +717,7 @@ void TFT_eSprite::pushSprite(int32_t x, int32_t y, uint16_t transp)
 //    16bpp  -> 16bpp
 //    16bpp  ->  8bpp
 //     8bpp  ->  8bpp
-//     4bpp  ->  4bpp (note: color translation depends on the 2 sprites palette colors)
+//     4bpp  ->  4bpp (note: color translation depends on the 2 sprites pallete colors)
 //     1bpp  ->  1bpp (note: color translation depends on the 2 sprites bitmap colors)
 
 bool TFT_eSprite::pushToSprite(TFT_eSprite *dspr, int32_t x, int32_t y)
@@ -1555,7 +1555,7 @@ void TFT_eSprite::fillSprite(uint32_t color)
 ** Function name:           width
 ** Description:             Return the width of sprite
 ***************************************************************************************/
-// Return the size of the sprite
+// Return the size of the display
 int16_t TFT_eSprite::width(void)
 {
   if (!_created ) return 0;
@@ -1990,8 +1990,10 @@ void TFT_eSprite::drawChar(int32_t x, int32_t y, uint16_t c, uint32_t color, uin
 {
   if ( _vpOoB || !_created ) return;
 
-  if ((x >= _vpW - _xDatum) || // Clip right
-      (y >= _vpH - _yDatum))   // Clip bottom
+  if ((x >= _vpW - _xDatum)                   || // Clip right
+      (y >= _vpH - _yDatum)                   || // Clip bottom
+      ((x + 6 * size - 1) < (_vpX - _xDatum)) || // Clip left
+      ((y + 8 * size - 1) < (_vpY - _yDatum)))   // Clip top
     return;
 
   if (c < 32) return;
@@ -2001,10 +2003,6 @@ void TFT_eSprite::drawChar(int32_t x, int32_t y, uint16_t c, uint32_t color, uin
   if(!gfxFont) { // 'Classic' built-in font
 #endif
 //>>>>>>>>>>>>>>>>>>
-
-  if (((x + 6 * size - 1) < (_vpX - _xDatum)) || // Clip left
-      ((y + 8 * size - 1) < (_vpY - _yDatum)))   // Clip top
-    return;
 
   bool fillbg = (bg != color);
 
@@ -2073,21 +2071,15 @@ void TFT_eSprite::drawChar(int32_t x, int32_t y, uint16_t c, uint32_t color, uin
 
       c -= pgm_read_word(&gfxFont->first);
       GFXglyph *glyph  = &(((GFXglyph *)pgm_read_dword(&gfxFont->glyph))[c]);
+      uint8_t  *bitmap = (uint8_t *)pgm_read_dword(&gfxFont->bitmap);
 
+      uint32_t bo = pgm_read_word(&glyph->bitmapOffset);
       uint8_t  w  = pgm_read_byte(&glyph->width),
                h  = pgm_read_byte(&glyph->height);
+               //xa = pgm_read_byte(&glyph->xAdvance);
       int8_t   xo = pgm_read_byte(&glyph->xOffset),
                yo = pgm_read_byte(&glyph->yOffset);
-
-      if (((x + xo + w * size - 1) < (_vpX - _xDatum)) || // Clip left
-          ((y + yo + h * size - 1) < (_vpY - _yDatum)))   // Clip top
-        return;
-
-      uint8_t  *bitmap = (uint8_t *)pgm_read_dword(&gfxFont->bitmap);
-      uint32_t bo = pgm_read_word(&glyph->bitmapOffset);
-
       uint8_t  xx, yy, bits=0, bit=0;
-      //uint8_t  xa = pgm_read_byte(&glyph->xAdvance);
       int16_t  xo16 = 0, yo16 = 0;
 
       if(size > 1) {
@@ -2127,12 +2119,6 @@ void TFT_eSprite::drawChar(int32_t x, int32_t y, uint16_t c, uint32_t color, uin
   #ifdef LOAD_GFXFF
   } // End classic vs custom font
   #endif
-#else
-  #ifndef LOAD_GFXFF
-    color = color;
-    bg = bg;
-    size = size;
-  #endif
 #endif
 
 }
@@ -2140,7 +2126,7 @@ void TFT_eSprite::drawChar(int32_t x, int32_t y, uint16_t c, uint32_t color, uin
 
 /***************************************************************************************
 ** Function name:           drawChar
-** Description:             draw a unicode glyph into the sprite
+** Description:             draw a unicode glyph onto the screen
 ***************************************************************************************/
   // TODO: Rationalise with TFT_eSPI
   // Any UTF-8 decoding must be done before calling drawChar()
@@ -2392,17 +2378,6 @@ int16_t TFT_eSprite::drawChar(uint16_t uniCode, int32_t x, int32_t y, uint8_t fo
   }
   // End of RLE font rendering
 #endif
-
-#if !defined (LOAD_FONT2) && !defined (LOAD_RLE)
-  // Stop warnings
-  flash_address = flash_address;
-  w = w;
-  pX = pX;
-  pY = pY;
-  line = line;
-  clip = clip;
-#endif
-
   return width * textsize;    // x +
 }
 
@@ -2498,8 +2473,8 @@ void TFT_eSprite::drawGlyph(uint16_t code)
     int16_t  bx = 0;
     uint8_t pixel = 0;
 
-    int16_t fillwidth  = 0;
-    int16_t fillheight = 0;
+    int16_t fillwidth   = 0;
+    uint16_t fillheight = 0;
 
     // Fill area above glyph
     if (_fillbg) {
